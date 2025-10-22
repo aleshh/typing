@@ -110,6 +110,12 @@ export default function TypingScreen({ onFinish, onCancel }: Props) {
     return tokens;
   }, [target, typed]);
 
+  const currentChar = target[idx];
+  const numberKeyMap: Record<string, string> = {
+    '!': '1', '@': '2', '#': '3', '$': '4', '%': '5', '^': '6', '&': '7', '*': '8', '(': '9', ')': '0',
+  };
+  const hintNum = numberKeyMap[currentChar];
+
   return (
     <div className="container">
       <div className="toolbar">
@@ -121,6 +127,17 @@ export default function TypingScreen({ onFinish, onCancel }: Props) {
           <span>Time: <strong>{Math.floor(elapsedMs / 1000)}s</strong></span>
         </div>
         <button className="btn" onClick={() => setPaused(p => !p)}>{paused ? 'Resume' : 'Pause'}</button>
+      </div>
+      <div className="card hintbox" aria-live="polite">
+        <strong>Hint:</strong>{' '}
+        <span className="hintkey" aria-hidden={hintNum ? 'false' : 'true'}>
+          {hintNum ? currentChar : '\u00A0'}
+        </span>
+        {hintNum ? (
+          <span className="hinttext"> is typed with Shift + <kbd>{hintNum}</kbd></span>
+        ) : (
+          <span className="hinttext hintplaceholder">—</span>
+        )}
       </div>
       <div className={`card typing ${paused ? 'paused' : ''}`}>
         <div className="progress"><div className="bar" style={{ width: `${(idx / target.length) * 100}%` }} /></div>
