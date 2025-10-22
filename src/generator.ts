@@ -75,7 +75,6 @@ const templates: Template[] = [
   () => `@${pascal()}()\nclass ${pascal()} { ${camel()}!: string; }`,
   () => `import * as ${camel()} from '@app/${camel()}';`,
   () => `const ${camel()} = (x: number = ${randNum()}) => x * (${randNum()} + ${randNum()}) % (${randNum()} || 1);`,
-  () => `const KEYS = "~\`!@#$%^&*()_-+=";`,
   () => `const OPS = ['+=','-=','*=','/=','%=','**='];`,
   () => `const ${camel()} = (${camel()}: number) => (${randNum()} + ${randNum()}) * (${camel()} ?? ${randNum()}) >= ${randNum()};`,
 ];
@@ -118,6 +117,67 @@ function templateScore(t: string, weights: Record<string, number>) {
 
 export function generateSnippet(cfg: AppConfig): string {
   const weights = buildBaseWeights(cfg);
+  const boost = Math.max(1, (cfg.numberLineEmphasis ?? 4));
+  const nlChars = Array.from(numberLine);
+
+  function randNL(min = 2, max = 4) {
+    const n = Math.floor(Math.random() * (max - min + 1)) + min;
+    let s = '';
+    for (let i = 0; i < n; i++) s += pick(nlChars);
+    return s;
+  }
+
+  function injectIntoString(l: string): string | null {
+    const quoteChars = [`'`, '"', '`'];
+    for (let i = 0; i < l.length; i++) {
+      const q = l[i];
+      if (!quoteChars.includes(q)) continue;
+      // find end quote, skipping escaped quotes (simple heuristic)
+      for (let j = i + 1; j < l.length; j++) {
+        if (l[j] === '\\') { j++; continue; }
+        if (l[j] === q) {
+          const before = l.slice(0, i + 1);
+          const content = l.slice(i + 1, j);
+          const after = l.slice(j);
+          const pos = Math.min(content.length, Math.max(0, Math.floor(Math.random() * (content.length + 1))));
+          const injected = content.slice(0, pos) + randNL(1, 3) + content.slice(pos);
+          return before + injected + after;
+        }
+      }
+    }
+    return null;
+  }
+
+  function sprinkleNumberLine(l: string): string {
+    // Much more aggressive sprinkling when emphasis is high.
+    // 1) Try injecting into strings
+    const pInject = Math.min(0.9, 0.10 * boost);
+    if (Math.random() < pInject) {
+      const injected = injectIntoString(l);
+      if (injected) l = injected;
+    }
+
+    // 2) Add number-line chars at word boundaries (before/after identifiers)
+    const pPre = Math.min(0.6, 0.08 * boost);
+    const pPost = Math.min(0.6, 0.08 * boost);
+    l = l.replace(/([A-Za-z_][A-Za-z0-9_]*)/g, (m) => {
+      const pre = Math.random() < pPre ? pick(nlChars) : '';
+      const post = Math.random() < pPost ? pick(nlChars) : '';
+      return pre + m + post;
+    });
+
+    // 3) Occasionally sprinkle at line edges
+    const pEdge = Math.min(0.4, 0.05 * boost);
+    if (Math.random() < pEdge) l = pick(nlChars) + l;
+    if (Math.random() < pEdge) l = l + pick(nlChars);
+
+    // 4) If none of the above happened and we still want more, append a light comment train
+    const pComment = Math.min(0.6, 0.12 * boost);
+    if (Math.random() < pComment) {
+      l = l + ` // ` + randNL(2, 5);
+    }
+    return l;
+  }
   const lines: string[] = [];
   while (lines.join('\n').length < cfg.sprintLength) {
     // Weighted pick among templates by punctuation presence
@@ -131,6 +191,8 @@ export function generateSnippet(cfg: AppConfig): string {
     for (const e of entries) { if ((r -= e.w) <= 0) { chosen = e.s; break; } }
     // Randomly end lines with semicolons where reasonable
     if (!/[;}]$/.test(chosen) && Math.random() < 0.6) chosen += ';';
+    // Distribute number-row characters across many lines
+    chosen = sprinkleNumberLine(chosen);
     lines.push(chosen);
     // Insert at most a single blank line to mimic paragraph breaks
     const rbreak = Math.random();
