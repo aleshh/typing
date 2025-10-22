@@ -17,22 +17,39 @@ export default function WelcomeScreen({ onStart, onProgress }: { onStart: () => 
       <div className="card">
         <h2>Quick Start</h2>
         <div className="row">
-          <label>Sprint length (chars)</label>
           <input
+            id="sprintLength"
             type="number"
             min={200}
             max={3000}
             value={cfg.sprintLength}
             onChange={(e) => setCfg({ ...cfg, sprintLength: Number(e.target.value) })}
           />
+          <label htmlFor="sprintLength">Sprint length (chars)</label>
         </div>
         <div className="row">
-          <label>Emphasize trouble chars</label>
           <input
+            id="emphasizeTrouble"
             type="checkbox"
             checked={cfg.emphasizeTrouble}
             onChange={(e) => setCfg({ ...cfg, emphasizeTrouble: e.target.checked })}
           />
+          <label htmlFor="emphasizeTrouble">Emphasize trouble chars</label>
+        </div>
+        <div className="row">
+          <div className="range">
+            <input
+              id="numberLine"
+              type="range"
+              min={1}
+              max={8}
+              step={1}
+              value={cfg.numberLineEmphasis ?? 4}
+              onChange={(e) => setCfg({ ...cfg, numberLineEmphasis: Number(e.target.value) })}
+            />
+            <span className="range-val">{cfg.numberLineEmphasis ?? 4}×</span>
+          </div>
+          <label htmlFor="numberLine">Number-row emphasis</label>
         </div>
 
         <div className="grid two">
@@ -53,4 +70,3 @@ export default function WelcomeScreen({ onStart, onProgress }: { onStart: () => 
     </div>
   );
 }
-

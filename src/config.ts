@@ -7,6 +7,7 @@ export type AppConfig = {
     punctuation: number;
   };
   emphasizeTrouble: boolean; // use char stats to weight generation
+  numberLineEmphasis?: number; // multiplier for ~`!@#$%^&*()_-+=
 };
 
 export const defaultConfig: AppConfig = {
@@ -18,4 +19,5 @@ export const defaultConfig: AppConfig = {
     punctuation: 0.5,
   },
   emphasizeTrouble: true,
+  numberLineEmphasis: 4,
 };

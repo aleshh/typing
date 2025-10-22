@@ -75,6 +75,9 @@ const templates: Template[] = [
   () => `@${pascal()}()\nclass ${pascal()} { ${camel()}!: string; }`,
   () => `import * as ${camel()} from '@app/${camel()}';`,
   () => `const ${camel()} = (x: number = ${randNum()}) => x * (${randNum()} + ${randNum()}) % (${randNum()} || 1);`,
+  () => `const KEYS = "~\`!@#$%^&*()_-+=";`,
+  () => `const OPS = ['+=','-=','*=','/=','%=','**='];`,
+  () => `const ${camel()} = (${camel()}: number) => (${randNum()} + ${randNum()}) * (${camel()} ?? ${randNum()}) >= ${randNum()};`,
 ];
 
 function buildBaseWeights(cfg: AppConfig) {
@@ -82,9 +85,10 @@ function buildBaseWeights(cfg: AppConfig) {
   const pushChars = (s: string, w: number) => { for (const ch of s) base[ch] = (base[ch] || 0) + w; };
   pushChars(letters + LETTERS, cfg.weights.letters / (letters.length * 2));
   pushChars(numbers, cfg.weights.numbers / numbers.length);
-  // Give extra emphasis to number-line characters
+  // Give extra emphasis to number-line characters (tunable)
   pushChars(punctuations, cfg.weights.punctuation / punctuations.length);
-  pushChars(numberLine, (cfg.weights.punctuation * 3) / numberLine.length);
+  const boost = Math.max(1, (cfg.numberLineEmphasis ?? 4));
+  pushChars(numberLine, (cfg.weights.punctuation * boost) / numberLine.length);
   if (cfg.emphasizeTrouble) {
     const stats = getCharStats();
     const worst = selectTopTrouble(stats, 5, 12);
@@ -128,12 +132,50 @@ export function generateSnippet(cfg: AppConfig): string {
     // Randomly end lines with semicolons where reasonable
     if (!/[;}]$/.test(chosen) && Math.random() < 0.6) chosen += ';';
     lines.push(chosen);
-    // Insert single or double blank lines to mimic code spacing
+    // Insert at most a single blank line to mimic paragraph breaks
     const rbreak = Math.random();
-    if (rbreak < 0.4) lines.push('');
-    if (rbreak < 0.2) lines.push(''); // double break sometimes
+    if (rbreak < 0.35 && lines[lines.length - 1] !== '' ) {
+      lines.push('');
+    }
   }
-  let out = lines.join('\n');
+  // Post-process: enforce single blank lines and wrap lines to 10..70 chars
+  const isBreak = (ch: string) => /[\s,;:)}\]]/.test(ch);
+  function wrapBounds(s: string, min = 10, max = 70): string[] {
+    const segs: string[] = [];
+    let rest = s;
+    while (rest.length > max) {
+      const limit = Math.min(max, rest.length - min);
+      let cut = -1;
+      for (let i = limit; i >= min; i--) {
+        if (isBreak(rest[i]) || isBreak(rest[i - 1])) { cut = i; break; }
+      }
+      if (cut === -1) cut = limit; // hard cut
+      segs.push(rest.slice(0, cut).trimEnd());
+      rest = rest.slice(cut).trimStart();
+    }
+    if (rest.length) segs.push(rest);
+    // If the last segment ended up very short (< min) and there is a previous segment that can absorb it, merge
+    if (segs.length >= 2) {
+      const last = segs[segs.length - 1];
+      const prev = segs[segs.length - 2];
+      if (last.length < min && prev.length + 1 + last.length <= max) {
+        segs[segs.length - 2] = prev + ' ' + last;
+        segs.pop();
+      }
+    }
+    return segs;
+  }
+
+  const normalized: string[] = [];
+  for (const ln of lines) {
+    if (ln.trim() === '') {
+      if (normalized[normalized.length - 1] !== '') normalized.push('');
+      continue;
+    }
+    const segs = wrapBounds(ln, 10, 70);
+    for (const s of segs) normalized.push(s);
+  }
+  let out = normalized.join('\n');
   if (out.length > cfg.sprintLength) out = out.slice(0, cfg.sprintLength);
   return out;
 }
