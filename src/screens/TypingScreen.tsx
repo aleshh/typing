@@ -97,17 +97,35 @@ export default function TypingScreen({ onFinish, onCancel }: Props) {
     onFinish(id);
   }, [done]);
 
-  const displayTokens = useMemo(() => {
-    const tokens: { ch: string; cls: string }[] = [];
-    for (let i = 0; i < target.length; i++) {
-      const ch = target[i];
-      const typedCh = typed[i];
-      let cls = 'upcoming';
-      if (i < typed.length) cls = typedCh === ch ? 'correct' : 'error';
-      if (i === typed.length) cls = 'current';
-      tokens.push({ ch: ch === ' ' ? '·' : ch === '\n' ? '↵\n' : ch, cls });
+  const displayLines = useMemo(() => {
+    const lines: { target: { ch: string; cls: string }[]; echo: { ch: string; cls: string }[] }[] = [];
+    let offset = 0;
+    const rawLines = target.split('\n');
+    for (const raw of rawLines) {
+      const tChars: { ch: string; cls: string }[] = [];
+      const eChars: { ch: string; cls: string }[] = [];
+      for (let j = 0; j < raw.length; j++) {
+        const pos = offset + j;
+        const ch = raw[j];
+        const typedCh = typed[pos];
+        let cls = 'upcoming';
+        // Keep the caret indicator on target line but move red/green to echo line
+        if (pos === typed.length) cls = 'current';
+        tChars.push({ ch: ch === ' ' ? '·' : ch, cls });
+        if (pos < typed.length) {
+          const ech = typedCh === ' ' ? '·' : typedCh === '\n' ? '' : typedCh;
+          const eCls = typedCh === ch ? 'echo-correct' : 'echo-error';
+          if (ech) eChars.push({ ch: ech, cls: eCls });
+        }
+      }
+      // Add caret on echo line for the current position within this line
+      if (typed.length >= offset && typed.length <= offset + raw.length) {
+        eChars.push({ ch: '▏', cls: 'echo-current' });
+      }
+      lines.push({ target: tChars, echo: eChars });
+      offset += raw.length + 1; // account for the newline
     }
-    return tokens;
+    return lines;
   }, [target, typed]);
 
   const currentChar = target[idx];
@@ -142,8 +160,19 @@ export default function TypingScreen({ onFinish, onCancel }: Props) {
       <div className={`card typing ${paused ? 'paused' : ''}`}>
         <div className="progress"><div className="bar" style={{ width: `${(idx / target.length) * 100}%` }} /></div>
         <pre className="snippet" aria-label="typing area">
-          {displayTokens.map((t, i) => (
-            <span key={i} className={t.cls}>{t.ch}</span>
+          {displayLines.map((ln, i) => (
+            <span key={`l-${i}`}>
+              {ln.target.map((t, j) => (
+                <span key={`t-${i}-${j}`} className={t.cls}>{t.ch}</span>
+              ))}
+              {'\n'}
+              {ln.echo.length > 0 ? (
+                ln.echo.map((e, j) => (
+                  <span key={`e-${i}-${j}`} className={`echo ${e.cls}`}>{e.ch}</span>
+                ))
+              ) : null}
+              {'\n'}
+            </span>
           ))}
         </pre>
         {paused && <div className="overlay">Paused — press Esc to resume</div>}

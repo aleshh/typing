@@ -66,6 +66,10 @@ body {
 .snippet .error { color: var(--danger); text-decoration: underline; text-decoration-thickness: 2px; }
 .snippet .upcoming { color: #627aa3; }
 .snippet .current { background: linear-gradient(180deg, #263257, #152045); border-radius: 4px; padding: 2px 1px; box-shadow: 0 0 0 2px #24315a inset; }
+.snippet .echo { color: #9ab0c5; }
+.snippet .echo-correct { color: #9ab0c5; }
+.snippet .echo-error { color: var(--danger); text-decoration: underline; text-decoration-thickness: 2px; }
+.snippet .echo-current { background: linear-gradient(180deg, #263257, #152045); border-radius: 4px; padding: 2px 1px; box-shadow: 0 0 0 2px #24315a inset; }
 
 .typing.paused::after { content: ''; position: absolute; inset: 0; background: rgba(7,10,22,0.5); backdrop-filter: blur(1px); }
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 18px; }
